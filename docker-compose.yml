@@ -29,8 +29,10 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./backend:/app         # hot reload during dev
-      - ./ml/models:/app/models  # mount trained models in
+      - ./backend:/app              # hot reload during dev
+      - ./ml/models:/app/models     # trained model files
+      - ./ml/processed:/app/processed  # preprocessed train/test splits for retraining
+      - ./ml/mlruns:/app/mlruns     # MLflow experiment + registry data
 
   frontend:
     build: ./frontend

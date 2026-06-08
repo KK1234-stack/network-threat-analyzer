@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # MLflow
+    MLFLOW_TRACKING_URI: str = "/app/mlruns"
+
     # App
     ENV: str = "development"
 

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from app.core.database import engine, Base
-from app.routes import auth, predictions
+from app.routes import auth, predictions, retrain
 from app.ml.model import load_model
 
 
@@ -23,6 +23,7 @@ app = FastAPI(
 
 app.include_router(auth.router)
 app.include_router(predictions.router)
+app.include_router(retrain.router)
 
 
 @app.get("/health")
