@@ -14,7 +14,6 @@ bcrypt==4.0.1
 python-multipart==0.0.9
 
 # ML inference
-torch==2.3.0
 scikit-learn==1.6.1
 pandas==2.2.2
 numpy==1.26.4
@@ -22,7 +21,6 @@ joblib==1.4.2
 
 # MLflow experiment tracking + model registry
 mlflow==2.13.0
-imbalanced-learn==0.12.3
 
 # Config
 pydantic-settings==2.2.1

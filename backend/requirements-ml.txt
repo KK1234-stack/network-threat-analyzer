@@ -1,0 +1,4 @@
+# Heavy ML deps only needed at runtime (not for CI tests)
+# Docker container installs both requirements.txt + requirements-ml.txt
+torch==2.3.0
+imbalanced-learn==0.12.3

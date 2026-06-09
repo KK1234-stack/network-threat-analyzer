@@ -3,8 +3,8 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install dependencies first (layer caching — only rebuilds if requirements change)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-ml.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-ml.txt
 
 # Copy app code
 COPY . .
