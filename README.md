@@ -157,6 +157,41 @@ Bot and Web Attack classes score lower due to limited real samples in the origin
 
 Preprocessing steps: strip column whitespace, drop inf/NaN rows, remove 13 constant/near-constant/duplicate columns, undersample BENIGN to 200k, SMOTE minority classes to 50k minimum, StandardScaler.
 
+## Roadmap / Future Work
+
+### User Data Feeds Retraining
+Currently the model is trained once on CICIDS2017 and retraining re-uses the same static dataset. The intended future flow is:
+
+```
+User uploads CSV → backend saves it to persistent storage
+                          ↓
+              Admin reviews + verifies predictions
+                          ↓
+         Retrain on CICIDS2017 + accumulated user submissions
+                          ↓
+              Better model deployed automatically
+```
+
+This requires:
+- **Persistent upload storage** — currently planned as a Docker volume (`ml/uploads/`), swap to **AWS S3** for production deployments
+- **Labeling workflow** — admin UI to mark predictions as correct/incorrect before they feed into retraining
+- **Combined training pipeline** — `trainer.py` reads original `.npy` arrays + new labeled CSVs and merges them before training
+
+### Raw Packet Support (.pcap)
+Currently the system expects CSVs pre-processed by **CICFlowMeter** (65 flow-level statistical features). Real-world users have raw `.pcap` files, not pre-processed CSVs.
+
+Planned approach:
+```
+.pcap upload → packet parser (scapy/dpkt) → flow feature extraction
+             → same 65-feature format → existing RF classifier
+```
+
+A longer-term alternative is replacing the RF with a **deep learning model with automatic feature extraction** (CNN or Transformer on raw packet byte sequences), eliminating the need for manual feature engineering entirely.
+
+### Deployment
+- CI/CD pipeline is scaffolded (`.github/workflows/deploy.yml`) but deploy steps are disabled pending Render/Railway setup
+- Re-enable by adding `RENDER_DEPLOY_HOOK_BACKEND` and `RENDER_DEPLOY_HOOK_FRONTEND` as GitHub secrets and restoring the push trigger
+
 ## Project Structure
 
 ```
