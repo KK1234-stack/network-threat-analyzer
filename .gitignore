@@ -10,12 +10,11 @@ __pycache__/
 venv/
 *.egg-info/
 
-# ML artifacts - don't commit trained models or data
-ml/mlflow_runs/
+# ML artifacts - don't commit trained models or large data arrays
+ml/mlruns/
 ml/models/*.pt
 ml/models/*.pkl
-*.pt
-*.pkl
+ml/processed/*.npy
 
 # Data (too large for git)
 ml/data/
