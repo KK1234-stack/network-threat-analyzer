@@ -177,6 +177,17 @@ This requires:
 - **Labeling workflow** — admin UI to mark predictions as correct/incorrect before they feed into retraining
 - **Combined training pipeline** — `trainer.py` reads original `.npy` arrays + new labeled CSVs and merges them before training
 
+### LSTM Inference
+
+The LSTM model is trained and tracked in MLflow alongside RF during every retraining run. The promotion logic already exists — if LSTM's weighted F1 exceeds RF's, it gets promoted to Production in the model registry automatically.
+
+However, the inference path for LSTM is not wired up (`model.py` raises `NotImplementedError` in the LSTM branch). The reason this hasn't been prioritised: **RF is extremely unlikely to lose**. RF achieved 0.9981 weighted F1 on CICIDS2017 tabular data. The LSTM architecture used here reshapes the 65 flat features into an artificial 10-step sequence, which is not a natural fit — LSTM is designed for data where the order of inputs carries meaning (e.g. time series, text). On tabular statistical features, RF consistently dominates.
+
+To fully wire up LSTM inference if it ever does win:
+- Load the model state dict from `lstm_model.pt` in `load_model()`
+- Implement the reshape + forward pass in the `elif _model_type == "lstm"` branch of `run_inference()`
+- Batch inference in chunks (as CUDA OOM was hit during evaluation on full dataset)
+
 ### Raw Packet Support (.pcap)
 Currently the system expects CSVs pre-processed by **CICFlowMeter** (65 flow-level statistical features). Real-world users have raw `.pcap` files, not pre-processed CSVs.
 
