@@ -95,6 +95,16 @@ def run_inference(df: pd.DataFrame) -> dict:
 
     start = time.time()
 
+    actual_cols = df.columns.str.strip().tolist()
+    missing = [c for c in FEATURE_COLUMNS if c not in actual_cols]
+    if missing:
+        preview = ", ".join(f'"{c}"' for c in missing[:5])
+        suffix = f" and {len(missing) - 5} more" if len(missing) > 5 else ""
+        raise ValueError(
+            f"CSV is missing {len(missing)} required columns: {preview}{suffix}. "
+            f"Upload a CICFlowMeter-processed CSV with {len(FEATURE_COLUMNS)} flow features."
+        )
+
     if _model_type == "dummy" or _model is None:
         classes = ["BENIGN", "DDoS", "PortScan", "DoS Hulk", "FTP-Patator"]
         weights = [0.7, 0.1, 0.08, 0.07, 0.05]
@@ -102,16 +112,6 @@ def run_inference(df: pd.DataFrame) -> dict:
         confidences = np.random.uniform(0.6, 0.99, size=len(df)).tolist()
 
     elif _model_type == "rf":
-        actual_cols = df.columns.str.strip().tolist()
-        missing = [c for c in FEATURE_COLUMNS if c not in actual_cols]
-        if missing:
-            preview = ", ".join(f'"{c}"' for c in missing[:5])
-            suffix = f" and {len(missing) - 5} more" if len(missing) > 5 else ""
-            raise ValueError(
-                f"CSV is missing {len(missing)} required columns: {preview}{suffix}. "
-                f"Upload a CICFlowMeter-processed CSV with {len(FEATURE_COLUMNS)} flow features."
-            )
-
         X = preprocess_for_inference(df, _scaler)
         preds = _model.predict(X)
         proba = _model.predict_proba(X)
