@@ -25,10 +25,20 @@ async def upload_and_predict(
     try:
         df = pd.read_csv(io.StringIO(contents.decode("utf-8")))
     except Exception:
-        raise HTTPException(status_code=400, detail="Could not parse CSV")
+        raise HTTPException(status_code=400, detail="Could not parse CSV — ensure the file is valid UTF-8 CSV")
 
-    # run_inference returns: labels list, inference_time_ms, model_version
-    results = run_inference(df)
+    if df.empty:
+        raise HTTPException(status_code=400, detail="CSV is empty")
+
+    if len(df) > 100_000:
+        raise HTTPException(status_code=400, detail="CSV too large — maximum 100,000 rows per upload")
+
+    try:
+        results = run_inference(df)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
 
     label_dist = {}
     for label in results["labels"]:

@@ -102,9 +102,15 @@ def run_inference(df: pd.DataFrame) -> dict:
         confidences = np.random.uniform(0.6, 0.99, size=len(df)).tolist()
 
     elif _model_type == "rf":
-        missing = [c for c in FEATURE_COLUMNS if c not in df.columns.str.strip().tolist()]
+        actual_cols = df.columns.str.strip().tolist()
+        missing = [c for c in FEATURE_COLUMNS if c not in actual_cols]
         if missing:
-            raise ValueError(f"CSV is missing required columns: {missing[:5]}{'...' if len(missing) > 5 else ''}")
+            preview = ", ".join(f'"{c}"' for c in missing[:5])
+            suffix = f" and {len(missing) - 5} more" if len(missing) > 5 else ""
+            raise ValueError(
+                f"CSV is missing {len(missing)} required columns: {preview}{suffix}. "
+                f"Upload a CICFlowMeter-processed CSV with {len(FEATURE_COLUMNS)} flow features."
+            )
 
         X           = preprocess_for_inference(df, _scaler)
         preds       = _model.predict(X)
