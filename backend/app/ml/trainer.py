@@ -73,20 +73,20 @@ def _run_training():
         client = MlflowClient(tracking_uri=settings.MLFLOW_TRACKING_URI)
 
         X_train = np.load(os.path.join(PROCESSED_DIR, "X_train.npy"))
-        X_test  = np.load(os.path.join(PROCESSED_DIR, "X_test.npy"))
+        X_test = np.load(os.path.join(PROCESSED_DIR, "X_test.npy"))
         y_train = np.load(os.path.join(PROCESSED_DIR, "y_train.npy"))
-        y_test  = np.load(os.path.join(PROCESSED_DIR, "y_test.npy"))
+        y_test = np.load(os.path.join(PROCESSED_DIR, "y_test.npy"))
         num_classes = len(np.unique(y_train))
 
         # --- RF ---
-        with mlflow.start_run(run_name="rf-retrain") as run:
+        with mlflow.start_run(run_name="rf-retrain"):
             params = {"n_estimators": 100, "max_depth": 20, "random_state": 42, "n_jobs": -1}
             mlflow.log_params(params)
             rf = RandomForestClassifier(**params)
             rf.fit(X_train, y_train)
             rf_f1 = f1_score(y_test, rf.predict(X_test), average="weighted")
             mlflow.log_metric("weighted_f1", rf_f1)
-            model_info = mlflow.sklearn.log_model(rf, "rf_model", registered_model_name=RF_MODEL_NAME)
+            mlflow.sklearn.log_model(rf, "rf_model", registered_model_name=RF_MODEL_NAME)
             rf_version = client.get_latest_versions(RF_MODEL_NAME, stages=["None"])[0].version
 
         # --- LSTM ---
@@ -99,7 +99,6 @@ def _run_training():
             X_tr = torch.tensor(X_train[:, :trim].reshape(-1, SEQ_LEN, fps), dtype=torch.float32)
             X_te = torch.tensor(X_test[:, :trim].reshape(-1, SEQ_LEN, fps), dtype=torch.float32)
             y_tr = torch.tensor(y_train, dtype=torch.long)
-            y_te = torch.tensor(y_test, dtype=torch.long)
             loader = DataLoader(TensorDataset(X_tr, y_tr), batch_size=BATCH, shuffle=True)
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             lstm_model = LSTMClassifier(fps, HIDDEN, LAYERS, num_classes).to(device)
