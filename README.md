@@ -7,7 +7,7 @@ Full-stack network intrusion detection system. Upload CICIDS-format network flow
 - **Backend:** FastAPI + PostgreSQL (SQLAlchemy) + JWT auth
 - **Frontend:** Streamlit
 - **ML:** Random Forest (production) vs LSTM (PyTorch), tracked with MLflow
-- **Infra:** Docker + docker-compose
+- **Infra:** Docker + docker-compose, GitHub Actions CI
 
 ## Architecture
 
@@ -189,19 +189,43 @@ Planned approach:
 A longer-term alternative is replacing the RF with a **deep learning model with automatic feature extraction** (CNN or Transformer on raw packet byte sequences), eliminating the need for manual feature engineering entirely.
 
 ### Deployment
-- CI/CD pipeline is scaffolded (`.github/workflows/deploy.yml`) but deploy steps are disabled pending Render/Railway setup
-- Re-enable by adding `RENDER_DEPLOY_HOOK_BACKEND` and `RENDER_DEPLOY_HOOK_FRONTEND` as GitHub secrets and restoring the push trigger
+- CI is live — tests run on every push automatically
+- Deploy workflow exists but is manual-only pending Render setup
+- To deploy: add `RENDER_DEPLOY_HOOK_BACKEND` and `RENDER_DEPLOY_HOOK_FRONTEND` as GitHub secrets, then trigger via Actions tab
+
+## Testing
+
+24 tests covering auth, predictions, and admin routes.
+
+```bash
+# Run inside the Docker container
+docker-compose exec backend python -m pytest tests/ -v
+```
+
+Tests use an in-memory SQLite database — no Postgres needed. CI runs them automatically on every push via GitHub Actions.
+
+## CI/CD
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `ci.yml` | Every push / PR to main | Lint + 24 tests |
+| `deploy.yml` | Manual only (workflow_dispatch) | Deploys to Render |
+
+Deploy never triggers automatically — only when you click "Run workflow" in the GitHub Actions tab. To enable deployment, add `RENDER_DEPLOY_HOOK_BACKEND` and `RENDER_DEPLOY_HOOK_FRONTEND` as GitHub secrets.
 
 ## Project Structure
 
 ```
 network-threat-analyzer/
-├── backend/                  # FastAPI app
-│   └── app/
-│       ├── core/             # config, database, security
-│       ├── models/           # SQLAlchemy ORM models
-│       ├── routes/           # auth, predictions, retrain
-│       └── ml/               # inference + background trainer
+├── backend/
+│   ├── app/
+│   │   ├── core/             # config, database, security
+│   │   ├── models/           # SQLAlchemy ORM models
+│   │   ├── routes/           # auth, predictions, retrain
+│   │   └── ml/               # inference + background trainer
+│   ├── tests/                # pytest test suite (24 tests)
+│   ├── requirements.txt      # core deps (used by CI + Docker)
+│   └── requirements-ml.txt   # heavy ML deps (torch — Docker only)
 ├── frontend/                 # Streamlit app
 ├── ml/                       # Training pipeline (run independently)
 │   ├── eda_and_training.ipynb
@@ -210,5 +234,8 @@ network-threat-analyzer/
 │   ├── evaluate.py
 │   ├── processed/            # scaler.pkl, label_encoder.pkl
 │   └── models/               # trained model files (gitignored)
+├── .github/workflows/
+│   ├── ci.yml                # lint + tests on every push
+│   └── deploy.yml            # manual deploy to Render
 └── docker-compose.yml
 ```
