@@ -1,10 +1,7 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:  # only runs when manually triggered from GitHub Actions tab
 
 jobs:
   test:
