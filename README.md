@@ -19,16 +19,77 @@ FastAPI Backend  ←→  PostgreSQL (prediction history)
 ML Inference (Random Forest)
 ```
 
-## Running Locally
+## Getting Started
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- Git
+
+### 1. Clone the repo
 
 ```bash
-cp .env.example .env          # fill in your values
-docker-compose up --build     # starts db + backend + frontend
+git clone https://github.com/KK1234-stack/network-threat-analyzer.git
+cd network-threat-analyzer
 ```
 
-- Backend API: http://localhost:8000
-- API docs: http://localhost:8000/docs
-- Frontend: http://localhost:8501
+### 2. Set up environment variables
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set your values:
+
+```
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=yourchosenpassword
+POSTGRES_DB=threat_analyzer
+DATABASE_URL=postgresql://postgres:yourchosenpassword@db:5432/threat_analyzer
+SECRET_KEY=any-long-random-string
+```
+
+### 3. Add the trained model
+
+The RF model file is too large for git. You need to obtain `rf_model.pkl` and place it at:
+
+```
+ml/models/rf_model.pkl
+```
+
+Options:
+- Download from the project's Kaggle notebook (`ml/eda_and_training.ipynb`) — run it and export the model from the Output panel
+- Or trigger retraining after startup via `POST /admin/retrain` (requires CICIDS2017 data in `ml/data/`)
+
+> `scaler.pkl` and `label_encoder.pkl` are already included in the repo under `ml/processed/`.
+
+### 4. Start the app
+
+```bash
+docker-compose up --build
+```
+
+This starts three services:
+- **PostgreSQL** — database
+- **FastAPI backend** — http://localhost:8000
+- **Streamlit frontend** — http://localhost:8501
+
+First build takes 3–5 minutes. Subsequent starts are fast.
+
+### 5. Use the app
+
+1. Open http://localhost:8501
+2. Register an account and log in
+3. Upload a CICIDS2017-format CSV to get threat classifications
+4. View prediction history in the History tab
+
+API docs (Swagger UI): http://localhost:8000/docs
+
+### Stopping the app
+
+```bash
+docker-compose down          # stop containers
+docker-compose down -v       # stop and delete the database volume
+```
 
 ## ML Training
 
