@@ -44,7 +44,7 @@ async def upload_and_predict(
     for label in results["labels"]:
         label_dist[label] = label_dist.get(label, 0) + 1
 
-    threat_labels = [l for l in results["labels"] if l != "BENIGN"]
+    threat_labels = [label for label in results["labels"] if label != "BENIGN"]
 
     prediction = Prediction(
         user_id=current_user.id,
@@ -70,8 +70,8 @@ async def upload_and_predict(
         "model_version": results["model_version"],
         "inference_time_ms": results["inference_time_ms"],
         "per_row": [
-            {"flow_index": i, "label": l, "confidence": c}
-            for i, (l, c) in enumerate(zip(results["labels"], results["confidences"]))
+            {"flow_index": i, "label": label, "confidence": c}
+            for i, (label, c) in enumerate(zip(results["labels"], results["confidences"]))
         ],
     }
 
