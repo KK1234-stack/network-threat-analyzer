@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # MLflow
     MLFLOW_TRACKING_URI: str = "/app/mlruns"
 
+    # Admin
+    ADMIN_EMAIL: str = ""
+
     # App
     ENV: str = "development"
 

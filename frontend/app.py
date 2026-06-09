@@ -20,6 +20,10 @@ def is_logged_in():
     return "token" in st.session_state and st.session_state.token
 
 
+def is_admin():
+    return st.session_state.get("is_admin", False)
+
+
 def auth_headers():
     return {"Authorization": f"Bearer {st.session_state.token}"}
 
@@ -41,6 +45,8 @@ def page_auth():
             if resp.status_code == 200:
                 st.session_state.token = resp.json()["access_token"]
                 st.session_state.email = email
+                me = requests.get(f"{BACKEND_URL}/auth/me", headers={"Authorization": f"Bearer {st.session_state.token}"})
+                st.session_state.is_admin = me.json().get("is_admin", False)
                 st.rerun()
             else:
                 st.error("Invalid credentials")
@@ -142,6 +148,58 @@ def page_history():
     st.plotly_chart(fig, use_container_width=True)
 
 
+# --- Admin Page ---
+
+def page_admin():
+    st.header("Admin — Model Retraining")
+
+    # Current status
+    resp = requests.get(f"{BACKEND_URL}/admin/retrain/status", headers=auth_headers())
+    if resp.status_code != 200:
+        st.error("Could not fetch retrain status")
+        return
+
+    state = resp.json()
+    status = state["status"]
+
+    status_color = {"idle": "🟡", "running": "🔵", "done": "🟢", "failed": "🔴"}
+    st.subheader(f"{status_color.get(status, '⚪')} Status: `{status}`")
+
+    if status == "running":
+        st.info("Retraining in progress — refresh to check for updates")
+        if st.button("Refresh Status"):
+            st.rerun()
+
+    if status == "done" and state.get("metrics"):
+        m = state["metrics"]
+        col1, col2, col3 = st.columns(3)
+        col1.metric("RF Weighted F1", f"{m['rf_f1']:.4f}")
+        col2.metric("LSTM Weighted F1", f"{m['lstm_f1']:.4f}")
+        col3.metric("Winner", m["winner"].upper())
+
+    if status == "failed" and state.get("error"):
+        st.error(f"Error: {state['error']}")
+
+    st.divider()
+
+    # Trigger retraining
+    st.write("Trigger a new training run. Trains RF + LSTM on preprocessed data, promotes the winner to production, and hot-reloads the model.")
+    st.warning("Requires preprocessed data in `/app/processed/`. Training takes several minutes.")
+
+    if status == "running":
+        st.button("Trigger Retraining", disabled=True)
+    else:
+        if st.button("Trigger Retraining", type="primary"):
+            r = requests.post(f"{BACKEND_URL}/admin/retrain", headers=auth_headers())
+            if r.status_code == 202:
+                st.success("Retraining started — refresh to monitor progress")
+                st.rerun()
+            elif r.status_code == 409:
+                st.warning("Already running")
+            else:
+                st.error(f"Error: {r.json().get('detail', 'Unknown')}")
+
+
 # --- Main router ---
 
 if not is_logged_in():
@@ -152,9 +210,15 @@ else:
         del st.session_state.token
         st.rerun()
 
-    page = st.sidebar.radio("Navigate", ["Upload & Analyze", "History"])
+    pages = ["Upload & Analyze", "History"]
+    if is_admin():
+        pages.append("Admin")
+
+    page = st.sidebar.radio("Navigate", pages)
 
     if page == "Upload & Analyze":
         page_upload()
     elif page == "History":
         page_history()
+    elif page == "Admin":
+        page_admin()
