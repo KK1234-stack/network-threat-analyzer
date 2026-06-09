@@ -16,8 +16,18 @@ DATA_DIR = "./data"
 OUTPUT_DIR = "./processed"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# CICIDS2017 columns to drop (non-feature)
-DROP_COLS = ["Flow ID", "Source IP", "Destination IP", "Timestamp", "Label"]
+# Columns to drop — identifiers, target, constants, near-constants, and exact duplicate
+# FEATURE_COLUMNS (65 total) derived from EDA in ml/eda_and_training.ipynb
+DROP_COLS = [
+    "Label",
+    "Fwd Header Length.1",       # exact duplicate of Fwd Header Length
+    # constant across all flows
+    "Bwd PSH Flags", "Bwd URG Flags",
+    "Fwd Avg Bytes/Bulk", "Fwd Avg Packets/Bulk", "Fwd Avg Bulk Rate",
+    "Bwd Avg Bytes/Bulk", "Bwd Avg Packets/Bulk", "Bwd Avg Bulk Rate",
+    # near-constant (>99.9% single value)
+    "Fwd URG Flags", "RST Flag Count", "CWE Flag Count", "ECE Flag Count",
+]
 
 
 def load_cicids(data_dir: str) -> pd.DataFrame:
