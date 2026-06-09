@@ -1,7 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  workflow_dispatch:  # only runs when manually triggered from GitHub Actions tab
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   test:
@@ -19,16 +22,17 @@ jobs:
       - name: Install backend deps
         run: |
           cd backend
-          pip install -r requirements.txt
+          pip install --no-cache-dir -r requirements.txt
 
       - name: Lint with flake8
         run: |
           pip install flake8
           flake8 backend/app --max-line-length=100 --ignore=E501,W503
 
-      # TODO: add pytest once tests are written
-      # - name: Run tests
-      #   run: pytest backend/tests/
+      - name: Run tests
+        run: |
+          cd backend
+          python -m pytest tests/ -v
 
   deploy:
     name: Deploy to Render

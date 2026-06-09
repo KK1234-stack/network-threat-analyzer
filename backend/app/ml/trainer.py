@@ -9,15 +9,14 @@ import time
 import threading
 import numpy as np
 import joblib
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score
 import mlflow
 import mlflow.sklearn
 import mlflow.pytorch
 from mlflow.tracking import MlflowClient
+
+# torch imported lazily inside _run_training to avoid loading 2GB at startup
 
 from app.core.config import settings
 
@@ -47,22 +46,25 @@ def _set_state(**kwargs):
         _state.update(kwargs)
 
 
-class LSTMClassifier(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, num_classes):
-        super().__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.3)
-        self.fc = nn.Linear(hidden_size, num_classes)
-
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        return self.fc(out[:, -1, :])
-
-
 def _promote(client: MlflowClient, model_name: str, version: str):
     client.transition_model_version_stage(model_name, version, "Production", archive_existing_versions=True)
 
 
 def _run_training():
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import DataLoader, TensorDataset
+
+    class LSTMClassifier(nn.Module):
+        def __init__(self, input_size, hidden_size, num_layers, num_classes):
+            super().__init__()
+            self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.3)
+            self.fc = nn.Linear(hidden_size, num_classes)
+
+        def forward(self, x):
+            out, _ = self.lstm(x)
+            return self.fc(out[:, -1, :])
+
     try:
         _set_state(status="running", started_at=time.time(), error=None, metrics=None)
 
