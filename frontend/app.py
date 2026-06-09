@@ -35,9 +35,11 @@ def page_auth():
     tab_login, tab_register = st.tabs(["Login", "Register"])
 
     with tab_login:
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Login"):
+        with st.form("login_form"):
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Password", type="password", key="login_password")
+            submitted = st.form_submit_button("Login", use_container_width=True)
+        if submitted:
             resp = requests.post(
                 f"{BACKEND_URL}/auth/login",
                 data={"username": email, "password": password},
@@ -52,9 +54,11 @@ def page_auth():
                 st.error("Invalid credentials")
 
     with tab_register:
-        email = st.text_input("Email", key="reg_email")
-        password = st.text_input("Password", type="password", key="reg_password")
-        if st.button("Register"):
+        with st.form("register_form"):
+            email = st.text_input("Email", key="reg_email")
+            password = st.text_input("Password", type="password", key="reg_password")
+            submitted = st.form_submit_button("Register", use_container_width=True)
+        if submitted:
             resp = requests.post(
                 f"{BACKEND_URL}/auth/register",
                 json={"email": email, "password": password},
