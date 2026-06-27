@@ -159,8 +159,8 @@ Preprocessing steps: strip column whitespace, drop inf/NaN rows, remove 13 const
 
 ## Roadmap / Future Work
 
-### User Data Feeds Retraining
-Currently the model is trained once on CICIDS2017 and retraining re-uses the same static dataset. The intended future flow is:
+### Retraining on New Data
+The model should improve over time as users submit real-world traffic. The intended future flow:
 
 ```
 User uploads CSV → backend saves it to persistent storage
@@ -172,10 +172,24 @@ User uploads CSV → backend saves it to persistent storage
               Better model deployed automatically
 ```
 
-This requires:
-- **Persistent upload storage** — currently planned as a Docker volume (`ml/uploads/`), swap to **AWS S3** for production deployments
-- **Labeling workflow** — admin UI to mark predictions as correct/incorrect before they feed into retraining
-- **Combined training pipeline** — `trainer.py` reads original `.npy` arrays + new labeled CSVs and merges them before training
+This requires a labeling workflow (admin marks predictions correct/incorrect), persistent upload storage (S3 or a mounted volume), and a combined training pipeline that merges the original `.npy` arrays with new labeled CSVs.
+
+The backend scaffolding for this already exists — `app/routes/retrain.py` and `app/ml/trainer.py` implement background retraining with MLflow tracking and automatic model promotion. They are not currently registered in the API (no endpoint is exposed) because there is no training data or labeling workflow on the server yet. Re-enabling is a one-line change in `main.py` once those are in place.
+
+### Flexible Input Formats & In-App Feature Extraction
+Currently the system requires CSVs pre-processed by **CICFlowMeter** — exactly 65 named flow-level features in the right column format. This is a significant friction point for real users.
+
+Two planned improvements:
+
+**Flexible CSV input:** Accept CSVs from other IDS datasets (NSL-KDD, UNSW-NB15) or custom formats. A format-detection + normalisation layer would map whatever columns the user provides to the 65-feature space the RF expects.
+
+**In-app feature extraction from raw traffic:** Users with `.pcap` files or live packet captures should not need CICFlowMeter installed locally. Planned approach:
+```
+.pcap upload → scapy/dpkt packet parser → flow feature extraction
+             → 65-feature format → existing RF classifier
+```
+
+A longer-term alternative is a deep learning model with automatic feature extraction (CNN or Transformer on raw packet bytes), removing the need for hand-engineered features entirely.
 
 ### LSTM Inference
 
@@ -187,22 +201,6 @@ To fully wire up LSTM inference if it ever does win:
 - Load the model state dict from `lstm_model.pt` in `load_model()`
 - Implement the reshape + forward pass in the `elif _model_type == "lstm"` branch of `run_inference()`
 - Batch inference in chunks (as CUDA OOM was hit during evaluation on full dataset)
-
-### Raw Packet Support (.pcap)
-Currently the system expects CSVs pre-processed by **CICFlowMeter** (65 flow-level statistical features). Real-world users have raw `.pcap` files, not pre-processed CSVs.
-
-Planned approach:
-```
-.pcap upload → packet parser (scapy/dpkt) → flow feature extraction
-             → same 65-feature format → existing RF classifier
-```
-
-A longer-term alternative is replacing the RF with a **deep learning model with automatic feature extraction** (CNN or Transformer on raw packet byte sequences), eliminating the need for manual feature engineering entirely.
-
-### Deployment
-- CI is live — tests run on every push automatically
-- Deploy workflow exists but is manual-only pending Render setup
-- To deploy: add `RENDER_DEPLOY_HOOK_BACKEND` and `RENDER_DEPLOY_HOOK_FRONTEND` as GitHub secrets, then trigger via Actions tab
 
 ## Testing
 

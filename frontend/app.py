@@ -153,55 +153,57 @@ def page_history():
 
 
 # --- Admin Page ---
+# Commented out — retraining UI is provisioned for future use.
+# Backend routes (app/routes/retrain.py) and training logic (app/ml/trainer.py)
+# are intact but not registered. Re-enable once the labeling workflow and
+# persistent training data storage are in place.
 
-def page_admin():
-    st.header("Admin — Model Retraining")
-
-    # Current status
-    resp = requests.get(f"{BACKEND_URL}/admin/retrain/status", headers=auth_headers())
-    if resp.status_code != 200:
-        st.error("Could not fetch retrain status")
-        return
-
-    state = resp.json()
-    status = state["status"]
-
-    status_color = {"idle": "🟡", "running": "🔵", "done": "🟢", "failed": "🔴"}
-    st.subheader(f"{status_color.get(status, '⚪')} Status: `{status}`")
-
-    if status == "running":
-        st.info("Retraining in progress — refresh to check for updates")
-        if st.button("Refresh Status"):
-            st.rerun()
-
-    if status == "done" and state.get("metrics"):
-        m = state["metrics"]
-        col1, col2, col3 = st.columns(3)
-        col1.metric("RF Weighted F1", f"{m['rf_f1']:.4f}")
-        col2.metric("LSTM Weighted F1", f"{m['lstm_f1']:.4f}")
-        col3.metric("Winner", m["winner"].upper())
-
-    if status == "failed" and state.get("error"):
-        st.error(f"Error: {state['error']}")
-
-    st.divider()
-
-    # Trigger retraining
-    st.write("Trigger a new training run. Trains RF + LSTM on preprocessed data, promotes the winner to production, and hot-reloads the model.")
-    st.warning("Requires preprocessed data in `/app/processed/`. Training takes several minutes.")
-
-    if status == "running":
-        st.button("Trigger Retraining", disabled=True)
-    else:
-        if st.button("Trigger Retraining", type="primary"):
-            r = requests.post(f"{BACKEND_URL}/admin/retrain", headers=auth_headers())
-            if r.status_code == 202:
-                st.success("Retraining started — refresh to monitor progress")
-                st.rerun()
-            elif r.status_code == 409:
-                st.warning("Already running")
-            else:
-                st.error(f"Error: {r.json().get('detail', 'Unknown')}")
+# def page_admin():
+#     st.header("Admin — Model Retraining")
+#
+#     resp = requests.get(f"{BACKEND_URL}/admin/retrain/status", headers=auth_headers())
+#     if resp.status_code != 200:
+#         st.error("Could not fetch retrain status")
+#         return
+#
+#     state = resp.json()
+#     status = state["status"]
+#
+#     status_color = {"idle": "🟡", "running": "🔵", "done": "🟢", "failed": "🔴"}
+#     st.subheader(f"{status_color.get(status, '⚪')} Status: `{status}`")
+#
+#     if status == "running":
+#         st.info("Retraining in progress — refresh to check for updates")
+#         if st.button("Refresh Status"):
+#             st.rerun()
+#
+#     if status == "done" and state.get("metrics"):
+#         m = state["metrics"]
+#         col1, col2, col3 = st.columns(3)
+#         col1.metric("RF Weighted F1", f"{m['rf_f1']:.4f}")
+#         col2.metric("LSTM Weighted F1", f"{m['lstm_f1']:.4f}")
+#         col3.metric("Winner", m["winner"].upper())
+#
+#     if status == "failed" and state.get("error"):
+#         st.error(f"Error: {state['error']}")
+#
+#     st.divider()
+#
+#     st.write("Trigger a new training run. Trains RF + LSTM on preprocessed data, promotes the winner to production, and hot-reloads the model.")
+#     st.warning("Requires preprocessed data in `/app/processed/`. Training takes several minutes.")
+#
+#     if status == "running":
+#         st.button("Trigger Retraining", disabled=True)
+#     else:
+#         if st.button("Trigger Retraining", type="primary"):
+#             r = requests.post(f"{BACKEND_URL}/admin/retrain", headers=auth_headers())
+#             if r.status_code == 202:
+#                 st.success("Retraining started — refresh to monitor progress")
+#                 st.rerun()
+#             elif r.status_code == 409:
+#                 st.warning("Already running")
+#             else:
+#                 st.error(f"Error: {r.json().get('detail', 'Unknown')}")
 
 
 # --- Main router ---
@@ -215,14 +217,9 @@ else:
         st.rerun()
 
     pages = ["Upload & Analyze", "History"]
-    if is_admin():
-        pages.append("Admin")
-
     page = st.sidebar.radio("Navigate", pages)
 
     if page == "Upload & Analyze":
         page_upload()
     elif page == "History":
         page_history()
-    elif page == "Admin":
-        page_admin()
