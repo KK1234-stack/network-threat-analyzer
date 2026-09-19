@@ -58,7 +58,6 @@ ml/models/rf_model.pkl
 
 Options:
 - Download from the project's Kaggle notebook (`ml/eda_and_training.ipynb`) — run it and export the model from the Output panel
-- Or trigger retraining after startup via `POST /admin/retrain` (requires CICIDS2017 data in `ml/data/`)
 
 > `scaler.pkl` and `label_encoder.pkl` are already included in the repo under `ml/processed/`.
 
@@ -204,7 +203,7 @@ To fully wire up LSTM inference if it ever does win:
 
 ## Testing
 
-24 tests covering auth, predictions, and admin routes.
+19 tests covering auth and predictions.
 
 ```bash
 # Run inside the Docker container
@@ -217,7 +216,7 @@ Tests use an in-memory SQLite database — no Postgres needed. CI runs them auto
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | Every push / PR to main | Lint + 24 tests |
+| `ci.yml` | Every push / PR to main | Lint + 19 tests |
 | `deploy.yml` | Manual only (workflow_dispatch) | Deploys to Render |
 
 Deploy never triggers automatically — only when you click "Run workflow" in the GitHub Actions tab. To enable deployment, add `RENDER_DEPLOY_HOOK_BACKEND` and `RENDER_DEPLOY_HOOK_FRONTEND` as GitHub secrets.
@@ -230,9 +229,9 @@ network-threat-analyzer/
 │   ├── app/
 │   │   ├── core/             # config, database, security
 │   │   ├── models/           # SQLAlchemy ORM models
-│   │   ├── routes/           # auth, predictions, retrain
+│   │   ├── routes/           # auth, predictions
 │   │   └── ml/               # inference + background trainer
-│   ├── tests/                # pytest test suite (24 tests)
+│   ├── tests/                # pytest test suite (19 tests)
 │   ├── requirements.txt      # core deps (used by CI + Docker)
 │   └── requirements-ml.txt   # heavy ML deps (torch — Docker only)
 ├── frontend/                 # Streamlit app
