@@ -29,7 +29,8 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./backend:/app              # hot reload during dev
+      # - ./backend:/app           
+      # hot reload during dev # disabled on macOS due to Errno 35; re-enable on Linux.
       - ./ml/models:/app/models     # trained model files
       - ./ml/processed:/app/processed  # preprocessed train/test splits for retraining
       - ./ml/mlruns:/app/mlruns     # MLflow experiment + registry data
