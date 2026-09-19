@@ -58,7 +58,6 @@ ml/models/rf_model.pkl
 
 Options:
 - Download from the project's Kaggle notebook (`ml/eda_and_training.ipynb`) — run it and export the model from the Output panel
-- Or trigger retraining after startup via `POST /admin/retrain` (requires CICIDS2017 data in `ml/data/`)
 
 > `scaler.pkl` and `label_encoder.pkl` are already included in the repo under `ml/processed/`.
 
@@ -113,13 +112,6 @@ python evaluate.py
 
 # MLflow UI
 mlflow ui  # opens at http://localhost:5000
-```
-
-You can also trigger retraining via the API (hot-reloads without restart):
-
-```
-POST /admin/retrain
-GET  /admin/retrain/status
 ```
 
 ## Model Results
