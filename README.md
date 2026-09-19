@@ -114,13 +114,6 @@ python evaluate.py
 mlflow ui  # opens at http://localhost:5000
 ```
 
-You can also trigger retraining via the API (hot-reloads without restart):
-
-```
-POST /admin/retrain
-GET  /admin/retrain/status
-```
-
 ## Model Results
 
 Trained on CICIDS2017 (2.83M flows, 12 classes). Random Forest is the production model.
