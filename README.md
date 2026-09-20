@@ -1,11 +1,23 @@
 # Network Threat Analyzer
 
-Full-stack network intrusion detection system. Upload CICIDS-format network flow CSVs and get real-time threat classifications with per-session history.
-
 > **TL;DR** — A full-stack network intrusion detection app: upload CICIDS-format network-flow CSVs and get real-time per-flow threat classifications (benign vs. attack type) with a personal history dashboard. Random Forest model (0.9981 weighted F1) served via a FastAPI backend, Streamlit frontend, PostgreSQL, containerized with Docker and deployed on Render.
 >
 > **Live demo:** https://network-threat-analyzer-n27b.onrender.com
 > *(Free tier — the first request may take 30–60s to wake the service, then it's responsive. If the app errors on first load, wait a moment and retry.)*
+
+## Demo
+
+**Upload** — drop in a CICIDS-format network-flow CSV:
+
+![Upload page](assets/demo-upload.webp)
+
+**Results** — per-upload threat breakdown; here the model cleanly separates benign traffic from a DDoS attack within one file (rf-v1, ~80ms inference):
+
+![Threat distribution](assets/demo-distribution.webp)
+
+**History** — per-user prediction history with cumulative threat distribution:
+
+![Prediction history](assets/demo-history.webp)
 
 ## Stack
 
@@ -33,6 +45,7 @@ ML Inference (Random Forest)
 ### 1. Clone the repo
 
 ```bash
+git lfs install    # install Git LFS first so model files download correctly
 git clone https://github.com/KK1234-stack/network-threat-analyzer.git
 cd network-threat-analyzer
 ```
@@ -230,7 +243,8 @@ Deployed on [Render](https://render.com) as two web services (backend + frontend
 
 ## Project Structure
 
-```network-threat-analyzer/
+```
+network-threat-analyzer/
 ├── backend/
 │   ├── app/
 │   │   ├── core/             # config, database, security
