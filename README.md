@@ -17,7 +17,7 @@
 
 **History** — per-user prediction history with cumulative threat distribution:
 
-![Prediction history](assets/demo-history.webp)
+![Prediction history](assets/demo-history1.webp)
 
 ## Stack
 
