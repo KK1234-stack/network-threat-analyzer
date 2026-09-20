@@ -53,18 +53,17 @@ DATABASE_URL=postgresql://postgres:yourchosenpassword@db:5432/threat_analyzer
 SECRET_KEY=any-long-random-string
 ```
 
-### 3. Add the trained model
+### 3. Get the trained model (Git LFS)
 
-The RF model file is too large for git. You need to obtain `rf_model.pkl` and place it at:
+The trained model and preprocessing artifacts (`rf_model.pkl`, `scaler.pkl`, `label_encoder.pkl`) are stored in the repo via [Git LFS](https://git-lfs.com/). Install LFS **before** cloning, or the files will come down as small pointer stubs instead of the real models:
 
+```bash
+git lfs install
+# if you already cloned before installing LFS:
+git lfs pull
 ```
-ml/models/rf_model.pkl
-```
 
-Options:
-- Download from the project's Kaggle notebook (`ml/eda_and_training.ipynb`) — run it and export the model from the Output panel
-
-> `scaler.pkl` and `label_encoder.pkl` are already included in the repo under `ml/processed/`.
+That's it — no manual model download needed.
 
 ### 4. Start the app
 
@@ -219,16 +218,27 @@ Tests use an in-memory SQLite database — no Postgres needed. CI runs them auto
 
 Deploy never triggers automatically — only when you click "Run workflow" in the GitHub Actions tab. To enable deployment, add `RENDER_DEPLOY_HOOK_BACKEND` and `RENDER_DEPLOY_HOOK_FRONTEND` as GitHub secrets.
 
+## Deployment
+
+Deployed on [Render](https://render.com) as two web services (backend + frontend) plus a managed PostgreSQL instance — mirroring the local docker-compose setup in the cloud.
+
+- **Backend & frontend** build from their respective `Dockerfile`s; the frontend reaches the backend via a `BACKEND_URL` env var.
+- **Model artifacts** are baked into the backend image at build time (Render has no volume mounts, unlike local docker-compose), pulled via Git LFS during the build.
+- **Config & secrets** (`DATABASE_URL`, `SECRET_KEY`, `ADMIN_EMAIL`, etc.) are set as environment variables in the Render dashboard, not committed.
+
+> Both services run on Render's free tier and spin down after ~15 min of inactivity; the first request after idle takes 30–60s to wake them.
+
 ## Project Structure
 
-```
-network-threat-analyzer/
+```network-threat-analyzer/
 ├── backend/
 │   ├── app/
 │   │   ├── core/             # config, database, security
 │   │   ├── models/           # SQLAlchemy ORM models
 │   │   ├── routes/           # auth, predictions
 │   │   └── ml/               # inference + background trainer
+│   ├── models/               # rf_model.pkl — bundled into image for deploy (Git LFS)
+│   ├── processed/            # scaler.pkl, label_encoder.pkl (Git LFS)
 │   ├── tests/                # pytest test suite (19 tests)
 │   ├── requirements.txt      # core deps (used by CI + Docker)
 │   └── requirements-ml.txt   # heavy ML deps (torch — Docker only)
@@ -238,8 +248,8 @@ network-threat-analyzer/
 │   ├── preprocess.py
 │   ├── train.py
 │   ├── evaluate.py
-│   ├── processed/            # scaler.pkl, label_encoder.pkl
-│   └── models/               # trained model files (gitignored)
+│   ├── processed/            # scaler.pkl, label_encoder.pkl (Git LFS)
+│   └── models/               # rf_model.pkl (Git LFS); lstm_model.pt gitignored
 ├── .github/workflows/
 │   ├── ci.yml                # lint + tests on every push
 │   └── deploy.yml            # manual deploy to Render
