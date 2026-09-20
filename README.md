@@ -2,6 +2,11 @@
 
 Full-stack network intrusion detection system. Upload CICIDS-format network flow CSVs and get real-time threat classifications with per-session history.
 
+> **TL;DR** — A full-stack network intrusion detection app: upload CICIDS-format network-flow CSVs and get real-time per-flow threat classifications (benign vs. attack type) with a personal history dashboard. Random Forest model (0.9981 weighted F1) served via a FastAPI backend, Streamlit frontend, PostgreSQL, containerized with Docker and deployed on Render.
+>
+> **Live demo:** https://network-threat-analyzer-n27b.onrender.com
+> *(Free tier — the first request may take 30–60s to wake the service, then it's responsive. If the app errors on first load, wait a moment and retry.)*
+
 ## Stack
 
 - **Backend:** FastAPI + PostgreSQL (SQLAlchemy) + JWT auth
