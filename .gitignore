@@ -13,7 +13,6 @@ venv/
 # ML artifacts - don't commit trained models or large data arrays
 ml/mlruns/
 ml/models/*.pt
-ml/models/*.pkl
 ml/processed/*.npy
 
 # Data (too large for git)
