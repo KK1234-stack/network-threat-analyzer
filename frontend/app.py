@@ -14,6 +14,33 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 st.set_page_config(page_title="Network Threat Analyzer", layout="wide")
 
 
+# --- Networking helpers ---
+
+WAKE_MSG = "Couldn't reach the server — it may be waking up (free tier sleeps after inactivity). Wait ~30s and try again."
+
+
+def api_request(method, path, **kwargs):
+    """
+    Make a request to the backend and return (resp, error_message).
+    If the backend is unreachable or times out, resp is None and error_message is set.
+    Never lets a network exception bubble up into a Streamlit traceback.
+    """
+    try:
+        resp = requests.request(
+            method, f"{BACKEND_URL}{path}", timeout=90, **kwargs)
+        return resp, None
+    except requests.exceptions.RequestException:
+        return None, WAKE_MSG
+
+
+def parse_json(resp):
+    """Return parsed JSON, or None if the response body isn't valid JSON."""
+    try:
+        return resp.json()
+    except ValueError:
+        return None
+
+
 # --- Session state helpers ---
 
 def is_logged_in():
@@ -37,36 +64,61 @@ def page_auth():
     with tab_login:
         with st.form("login_form"):
             email = st.text_input("Email", key="login_email")
-            password = st.text_input("Password", type="password", key="login_password")
-            submitted = st.form_submit_button("Login", use_container_width=True)
+            password = st.text_input(
+                "Password", type="password", key="login_password")
+            submitted = st.form_submit_button(
+                "Login", use_container_width=True)
         if submitted:
-            resp = requests.post(
-                f"{BACKEND_URL}/auth/login",
+            resp, err = api_request(
+                "POST", "/auth/login",
                 data={"username": email, "password": password},
             )
-            if resp.status_code == 200:
-                st.session_state.token = resp.json()["access_token"]
-                st.session_state.email = email
-                me = requests.get(f"{BACKEND_URL}/auth/me", headers={"Authorization": f"Bearer {st.session_state.token}"})
-                st.session_state.is_admin = me.json().get("is_admin", False)
-                st.rerun()
-            else:
+            if err:
+                st.error(err)
+            elif resp.status_code == 200:
+                data = parse_json(resp)
+                if data is None:
+                    st.error(WAKE_MSG)
+                else:
+                    st.session_state.token = data["access_token"]
+                    st.session_state.email = email
+                    me_resp, me_err = api_request(
+                        "GET", "/auth/me",
+                        headers={
+                            "Authorization": f"Bearer {st.session_state.token}"},
+                    )
+                    me_data = parse_json(
+                        me_resp) if me_resp is not None else None
+                    st.session_state.is_admin = (
+                        me_data or {}).get("is_admin", False)
+                    st.rerun()
+            elif resp.status_code == 401:
                 st.error("Invalid credentials")
+            else:
+                data = parse_json(resp)
+                st.error((data or {}).get(
+                    "detail", "Login failed. Please try again."))
 
     with tab_register:
         with st.form("register_form"):
             email = st.text_input("Email", key="reg_email")
-            password = st.text_input("Password", type="password", key="reg_password")
-            submitted = st.form_submit_button("Register", use_container_width=True)
+            password = st.text_input(
+                "Password", type="password", key="reg_password")
+            submitted = st.form_submit_button(
+                "Register", use_container_width=True)
         if submitted:
-            resp = requests.post(
-                f"{BACKEND_URL}/auth/register",
+            resp, err = api_request(
+                "POST", "/auth/register",
                 json={"email": email, "password": password},
             )
-            if resp.status_code == 201:
+            if err:
+                st.error(err)
+            elif resp.status_code == 201:
                 st.success("Account created — please log in")
             else:
-                st.error(resp.json().get("detail", "Error"))
+                data = parse_json(resp)
+                st.error((data or {}).get(
+                    "detail", "Registration failed. Please try again."))
 
 
 # --- Upload & Analyze Page ---
@@ -79,24 +131,31 @@ def page_upload():
 
     if uploaded and st.button("Analyze"):
         with st.spinner("Running inference..."):
-            resp = requests.post(
-                f"{BACKEND_URL}/predictions/upload",
+            resp, err = api_request(
+                "POST", "/predictions/upload",
                 headers=auth_headers(),
-                files={"file": (uploaded.name, uploaded.getvalue(), "text/csv")},
+                files={
+                    "file": (uploaded.name, uploaded.getvalue(), "text/csv")},
             )
 
-        if resp.status_code != 200:
-            st.error(f"Error: {resp.json().get('detail', 'Unknown error')}")
+        if err:
+            st.error(err)
             return
 
-        data = resp.json()
+        data = parse_json(resp)
+        if resp.status_code != 200 or data is None:
+            detail = (data or {}).get(
+                "detail", "Unknown error") if data else "Server error — please try again."
+            st.error(f"Error: {detail}")
+            return
 
         col1, col2, col3 = st.columns(3)
         col1.metric("Total Flows", data["total_flows"])
         col2.metric("Threats Detected", data["threat_count"])
         col3.metric("Benign Flows", data["benign_count"])
 
-        st.caption(f"Model: `{data['model_version']}` | Inference time: {data['inference_time_ms']:.1f}ms")
+        st.caption(
+            f"Model: `{data['model_version']}` | Inference time: {data['inference_time_ms']:.1f}ms")
 
         # Label distribution pie chart
         dist = data["label_distribution"]
@@ -119,21 +178,27 @@ def page_upload():
 def page_history():
     st.header("Prediction History")
 
-    resp = requests.get(f"{BACKEND_URL}/predictions/history", headers=auth_headers())
-    if resp.status_code != 200:
-        st.error("Could not fetch history")
+    resp, err = api_request(
+        "GET", "/predictions/history", headers=auth_headers())
+    if err:
+        st.error(err)
         return
 
-    records = resp.json()
+    records = parse_json(resp)
+    if resp.status_code != 200 or records is None:
+        st.error("Could not fetch history — please try again.")
+        return
     if not records:
         st.info("No predictions yet — upload a CSV to get started")
         return
 
     # Summary table
     df = pd.DataFrame(records)
-    df["uploaded_at"] = pd.to_datetime(df["uploaded_at"]).dt.strftime("%Y-%m-%d %H:%M")
+    df["uploaded_at"] = pd.to_datetime(
+        df["uploaded_at"]).dt.strftime("%Y-%m-%d %H:%M")
     st.dataframe(
-        df[["filename", "uploaded_at", "total_flows", "threat_count", "benign_count", "model_version"]],
+        df[["filename", "uploaded_at", "total_flows",
+            "threat_count", "benign_count", "model_version"]],
         use_container_width=True,
     )
 
@@ -150,6 +215,25 @@ def page_history():
         title="Cumulative Threat Distribution (All Predictions)",
     )
     st.plotly_chart(fig, use_container_width=True)
+
+
+# --- Main router ---
+
+if not is_logged_in():
+    page_auth()
+else:
+    st.sidebar.title(f"Logged in as\n{st.session_state.get('email', '')}")
+    if st.sidebar.button("Logout"):
+        del st.session_state.token
+        st.rerun()
+
+    pages = ["Upload & Analyze", "History"]
+    page = st.sidebar.radio("Navigate", pages)
+
+    if page == "Upload & Analyze":
+        page_upload()
+    elif page == "History":
+        page_history()
 
 
 # --- Admin Page ---
@@ -204,22 +288,3 @@ def page_history():
 #                 st.warning("Already running")
 #             else:
 #                 st.error(f"Error: {r.json().get('detail', 'Unknown')}")
-
-
-# --- Main router ---
-
-if not is_logged_in():
-    page_auth()
-else:
-    st.sidebar.title(f"Logged in as\n{st.session_state.get('email', '')}")
-    if st.sidebar.button("Logout"):
-        del st.session_state.token
-        st.rerun()
-
-    pages = ["Upload & Analyze", "History"]
-    page = st.sidebar.radio("Navigate", pages)
-
-    if page == "Upload & Analyze":
-        page_upload()
-    elif page == "History":
-        page_history()
